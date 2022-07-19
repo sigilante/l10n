@@ -45,35 +45,9 @@
 ::  +$  locale  [language script region]
 ::  ```
 ::
-::  We maintain a map from each app name to a cascade of maps of locale data.
-::  An app should register its name and expectations upon state initialization.
-::
-::    app-name
-::    ├── language-1
-::    │   ├── script-1
-::    │   │   ├── region-1
-::    │   │   │   ├── welcome-string
-::    │   │   │   └── error-string
-::    │   │   └── region-2
-::    │   │       ├── welcome-string
-::    │   │       └── error-string
-::    │   └── script-2
-::    │       └── region-1
-::    │           ├── welcome-string
-::    │           └── error-string
-::    └── language-2
-::        ├── script-1
-::        │   └── region-3
-::        │       ├── welcome-string
-::        │       └── error-string
-::        └── script-3
-::            └── region-1
-::                ├── welcome-string
-::                └── error-string
-::
-::  The tricky part is that locales should nest inside of each other, rather
-::  like auras.  Thus if we cannot locate `'en_Hang_AU'`, we should check first
-::  for `'en_AU'` then `'en'`.  This means we actually search components:  we
+::  The tricky part is that locales should “nest” inside of each other, rather
+::  like auras.  Thus if we cannot locate `'en_Latn_GB'`, we should check first
+::  for `'en_GB'` then `'en'`.  This means we actually search components:  we
 ::  look for language, then script, then region, and fall back on our best prior
 ::  match if we can't find a perfect match.
 ::
@@ -99,8 +73,6 @@
 ::
 !:
 |%
-+$  app       @tas
-::
 +$  language  ?(iso-639-1-keys iso-639-2-keys)
 +$  script    ?(iso-15924-keys)
 +$  region    ?(iso-3166-keys)
@@ -167,10 +139,7 @@
         ?:  (~(has by mots) locale)
         (~(got by mots) locale)
       *griffe
-    ~&  >  locale
-    ~&  >>  (~(put by source) label tape)
-    ~&  >>>  (~(put by mots) locale `griffe`(~(put by source) label tape))
-    *(map ^locale griffe)
+    (~(put by mots) locale `griffe`(~(put by source) label tape))
   ::  Put by default locale.
   ::
   ++  putd
@@ -196,16 +165,16 @@
     =/  region    +>.locale
     =/  source  ^-  griffe
           ?:  (~(has by mots) [language script region])
-          (~(get by mots) [language script region])
+          (~(got by mots) [language script region])
         ?:  (~(has by mots) [language %$ region])
-        (~(get by mots) [language %$ region])
+        (~(got by mots) [language %$ region])
       ?:  (~(has by mots) [language %$ %$])
-      (~(get by mots) [language %$ %$])
-    ?:  (~(has by mots) default-region)
-    (~(get by mots) default-region)
+      (~(got by mots) [language %$ %$])
+    ?:  (~(has by mots) default-locale)
+    (~(got by mots) default-locale)
+    *griffe
     ?:  (~(has by source) label)
       (~(get by source) label)
-    `(unit tape)`~
     `(unit tape)`~
   ::  Get by default locale.
   ::
@@ -233,7 +202,7 @@
   ++  hasd
     |=  [=label]
     ^-  ?(%.y %.n)
-    (~(has by mots) default-locale label)
+    (has default-locale label)
   ::  Has by tree (e.g. [%en %$ %gb]).  Fall back by removing script, then
   ::  region.
   ::
@@ -253,14 +222,15 @@
   ::  Delete by string
   ++  dels
     |=  [=tape =label]
-    ^-  (unit ^tape)
+    ^-  (map locale griffe)
     ::  Retrieve locale from string.
-    =/  locale  `locale`(parse-locale tape)
-    (~(del by mots) locale label)
+    (del (parse-locale tape) label)
   ::  Delete by locale
   ++  del
     |=  [=locale =label]
+    ^-  (map ^locale griffe)
     ~|  'Failed to locate key for deletion.'
+    ?.  (~(has by mots) locale)  !!
     =/  source  (~(got by mots) locale)
     =/  modify  (~(del by source) label)
     (~(put by mots) locale modify)
