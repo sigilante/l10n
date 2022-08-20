@@ -63,13 +63,15 @@
 ::    /+  *l10n
 ::    /*  locale-data  %hoon  /app/my-app/string-table/hoon
 ::    =/  words  (parse-strings:le locale-data)
-::    (~(get le words) [%en %$ %$] autonym)
-::    (~(getd le words) autonym)
-::    (~(gets le words) 'en-Dsrt-US' autonym)
+::    (~(get le words) [%en %$ %$] %autonym)
+::    (~(getd le words) %autonym)
+::    (~(gets le words) 'en-Dsrt-US' %autonym)
 ::
 ::  We recommend putting your app's string table at /lib/app-name/strings/hoon.
 ::  It is up to the app to change the default locale if the strings source
 ::  should be overridden.
+::
+::  Two-letter and three-letter codes are NOT unified.  Pick a lane!
 ::
 !:
 |%
@@ -127,24 +129,25 @@
   ::
   ++  puts
     |=  [lieu=tape =label =tape]
-    ^-  (map locale griffe)
+    ^-  [locale (map locale griffe)]
     =/  locale  `locale`(parse-locale lieu)
     (put locale label tape)
   ::  Put by locale (e.g. [%en %$ %gb]).
   ::
   ++  put
     |=  [=locale =label =tape]
-    ^-  (map ^locale griffe)
+    ^-  [^locale (map ^locale griffe)]
     =/  source  ^-  griffe
         ?:  (~(has by mots) locale)
         (~(got by mots) locale)
       *griffe
-    (~(put by mots) locale `griffe`(~(put by source) label tape))
+    :-  default-locale
+        (~(put by mots) locale `griffe`(~(put by source) label tape))
   ::  Put by default locale.
   ::
   ++  putd
     |=  [=locale =label =tape]
-    ^-  (map ^locale griffe)
+    ^-  [^locale (map ^locale griffe)]
     (put default-locale label tape)
   ::  Get by string (e.g. 'en_GB').  Fallback handled in ++get.
   ::
@@ -164,14 +167,14 @@
     =/  script    +<.locale
     =/  region    +>.locale
     =/  source  ^-  griffe
-          ?:  (~(has by mots) [language script region])
-          (~(got by mots) [language script region])
-        ?:  (~(has by mots) [language %$ region])
-        (~(got by mots) [language %$ region])
-      ?:  (~(has by mots) [language %$ %$])
-      (~(got by mots) [language %$ %$])
-    ?:  (~(has by mots) default-locale)
-    (~(got by mots) default-locale)
+            ?:  (~(has by mots) [language script region])
+              (~(got by mots) [language script region])
+          ?:  (~(has by mots) [language %$ region])
+            (~(got by mots) [language %$ region])
+        ?:  (~(has by mots) [language %$ %$])
+          (~(got by mots) [language %$ %$])
+      ?:  (~(has by mots) default-locale)
+        (~(got by mots) default-locale)
     *griffe
     ?:  (~(has by source) label)
       (~(get by source) label)
@@ -1622,7 +1625,7 @@
   +$  calf  (list ?(@tD @tE @tF @tG))
   ::  unify UTF-8 multi-byte characters into a single @t throughout a tape
   ++  lasso
-    |=  dogy=calf
+    |=  dogy=tape
     ^-  calf
     =/  index  0
     =|  stok=calf
@@ -1656,6 +1659,49 @@
       =/  fourth  `@t`(snag +(+(+(index))) dogy)
       =/  char    `@t`(rep 3 ~[first second third fourth])
       $(index +(+(+(+(index)))), stok (weld ~[char] stok))
+    !!
+  ::  split UTF-8 multi-byte characters back into bytes in a tape
+  ++  brand
+    |=  beef=calf
+    ^-  tape
+    =|  ster=tape
+    %-  flop
+    |-  ^-  tape
+    ?~  beef  ster
+    =/  char  `@ux``@`(snag 0 `calf`beef)
+    ::  1-byte ASCII?
+    ~|  'Error processing UTF-8 multi-byte character into bytes.'
+    ?:  (lth char 0x7f)
+      =/  count  1
+      =/  first   `@t`char
+      %=  $
+        beef   `calf`(slag count `calf`beef)
+        ster   (weld ~[first] ster)
+      ==
+    ::  2-byte?
+    ?:  &((lte 0xc0 char) (gte 0xdf char))
+      =/  count  2
+      =+  [first second]=[&1 &2]:(rip [3 1] char)
+      %=  $
+        beef   `calf`(slag count `calf`beef)
+        ster   (weld ~[second first] ster)
+      ==
+    ::  3-byte?
+    ?:  &((lte 0xe0 char) (gte 0xef char))
+      =/  count  2
+      =+  [first second third]=[&1 &2 &3]:(rip [3 1] char)
+      %=  $
+        beef   `calf`(slag count `calf`beef)
+        ster   (weld ~[third second first] ster)
+      ==
+    ::  4-byte?
+    ?:  &((lte 0xf0 char) (gte 0xf7 char))
+      =/  count  2
+      =+  [first second third fourth]=[&1 &2 &3 &4]:(rip [3 1] char)
+      %=  $
+        beef   `calf`(slag count `calf`beef)
+        ster   (weld ~[fourth third second first] ster)
+      ==
     !!
   ++  cass
     |=  vib=tape
@@ -2081,6 +2127,92 @@
         :-  'Ⴣ'  'ჳ'        :: 0x10c3 Georgian Capital Letter We
         :-  'Ⴤ'  'ჴ'        :: 0x10c4 Georgian Capital Letter Har
         :-  'Ⴥ'  'ჵ'        :: 0x10c5 Georgian Capital Letter Hoe
+        :-  'Ꭰ'  'ꭰ'        :: 0x13a0 Cherokee Capital Letter 
+        :-  'Ꭱ'  'ꭱ'        :: 0x13a1 Cherokee Capital Letter 
+        :-  'Ꭲ'  'ꭲ'        :: 0x13a2 Cherokee Capital Letter 
+        :-  'Ꭳ'  'ꭳ'        :: 0x13a3 Cherokee Capital Letter 
+        :-  'Ꭴ'  'ꭴ'        :: 0x13a4 Cherokee Capital Letter 
+        :-  'Ꭵ'  'ꭵ'        :: 0x13a5 Cherokee Capital Letter 
+        :-  'Ꭶ'  'ꭶ'        :: 0x13a6 Cherokee Capital Letter 
+        :-  'Ꭷ'  'ꭷ'        :: 0x13a7 Cherokee Capital Letter 
+        :-  'Ꭸ'  'ꭸ'        :: 0x13a8 Cherokee Capital Letter 
+        :-  'Ꭹ'  'ꭹ'        :: 0x13a9 Cherokee Capital Letter 
+        :-  'Ꭺ'  'ꭺ'        :: 0x13aa Cherokee Capital Letter 
+        :-  'Ꭻ'  'ꭻ'        :: 0x13ab Cherokee Capital Letter 
+        :-  'Ꭼ'  'ꭼ'        :: 0x13ac Cherokee Capital Letter 
+        :-  'Ꭽ'  'ꭽ'        :: 0x13ad Cherokee Capital Letter 
+        :-  'Ꭾ'  'ꭾ'        :: 0x13ae Cherokee Capital Letter 
+        :-  'Ꭿ'  'ꭿ'        :: 0x13af Cherokee Capital Letter 
+        :-  'Ꮀ'  'ꮀ'        :: 0x13b0 Cherokee Capital Letter 
+        :-  'Ꮁ'  'ꮁ'        :: 0x13b1 Cherokee Capital Letter 
+        :-  'Ꮂ'  'ꮂ'        :: 0x13b2 Cherokee Capital Letter 
+        :-  'Ꮃ'  'ꮃ'        :: 0x13b3 Cherokee Capital Letter 
+        :-  'Ꮄ'  'ꮄ'        :: 0x13b4 Cherokee Capital Letter 
+        :-  'Ꮅ'  'ꮅ'        :: 0x13b5 Cherokee Capital Letter 
+        :-  'Ꮆ'  'ꮆ'        :: 0x13b6 Cherokee Capital Letter 
+        :-  'Ꮇ'  'ꮇ'        :: 0x13b7 Cherokee Capital Letter 
+        :-  'Ꮈ'  'ꮈ'        :: 0x13b8 Cherokee Capital Letter 
+        :-  'Ꮉ'  'ꮉ'        :: 0x13b9 Cherokee Capital Letter 
+        :-  'Ꮊ'  'ꮊ'        :: 0x13ba Cherokee Capital Letter 
+        :-  'Ꮋ'  'ꮋ'        :: 0x13bb Cherokee Capital Letter 
+        :-  'Ꮌ'  'ꮌ'        :: 0x13bc Cherokee Capital Letter 
+        :-  'Ꮍ'  'ꮍ'        :: 0x13bd Cherokee Capital Letter 
+        :-  'Ꮎ'  'ꮎ'        :: 0x13be Cherokee Capital Letter 
+        :-  'Ꮏ'  'ꮏ'        :: 0x13bf Cherokee Capital Letter 
+        :-  'Ꮐ'  'ꮐ'        :: 0x13c0 Cherokee Capital Letter 
+        :-  'Ꮑ'  'ꮑ'        :: 0x13c1 Cherokee Capital Letter 
+        :-  'Ꮒ'  'ꮒ'        :: 0x13c2 Cherokee Capital Letter 
+        :-  'Ꮓ'  'ꮓ'        :: 0x13c3 Cherokee Capital Letter 
+        :-  'Ꮔ'  'ꮔ'        :: 0x13c4 Cherokee Capital Letter 
+        :-  'Ꮕ'  'ꮕ'        :: 0x13c5 Cherokee Capital Letter 
+        :-  'Ꮖ'  'ꮖ'        :: 0x13c6 Cherokee Capital Letter 
+        :-  'Ꮗ'  'ꮗ'        :: 0x13c7 Cherokee Capital Letter 
+        :-  'Ꮘ'  'ꮘ'        :: 0x13c8 Cherokee Capital Letter 
+        :-  'Ꮙ'  'ꮙ'        :: 0x13c9 Cherokee Capital Letter 
+        :-  'Ꮚ'  'ꮚ'        :: 0x13ca Cherokee Capital Letter 
+        :-  'Ꮛ'  'ꮛ'        :: 0x13cb Cherokee Capital Letter 
+        :-  'Ꮜ'  'ꮜ'        :: 0x13cc Cherokee Capital Letter 
+        :-  'Ꮝ'  'ꮝ'        :: 0x13cd Cherokee Capital Letter 
+        :-  'Ꮞ'  'ꮞ'        :: 0x13ce Cherokee Capital Letter 
+        :-  'Ꮟ'  'ꮟ'        :: 0x13cf Cherokee Capital Letter 
+        :-  'Ꮠ'  'ꮠ'        :: 0x13d0 Cherokee Capital Letter 
+        :-  'Ꮡ'  'ꮡ'        :: 0x13d1 Cherokee Capital Letter 
+        :-  'Ꮢ'  'ꮢ'        :: 0x13d2 Cherokee Capital Letter 
+        :-  'Ꮣ'  'ꮣ'        :: 0x13d3 Cherokee Capital Letter 
+        :-  'Ꮤ'  'ꮤ'        :: 0x13d4 Cherokee Capital Letter 
+        :-  'Ꮥ'  'ꮥ'        :: 0x13d5 Cherokee Capital Letter 
+        :-  'Ꮦ'  'ꮦ'        :: 0x13d6 Cherokee Capital Letter 
+        :-  'Ꮧ'  'ꮧ'        :: 0x13d7 Cherokee Capital Letter 
+        :-  'Ꮨ'  'ꮨ'        :: 0x13d8 Cherokee Capital Letter 
+        :-  'Ꮩ'  'ꮩ'        :: 0x13d9 Cherokee Capital Letter 
+        :-  'Ꮪ'  'ꮪ'        :: 0x13da Cherokee Capital Letter 
+        :-  'Ꮫ'  'ꮫ'        :: 0x13db Cherokee Capital Letter 
+        :-  'Ꮬ'  'ꮬ'        :: 0x13dc Cherokee Capital Letter 
+        :-  'Ꮭ'  'ꮭ'        :: 0x13dd Cherokee Capital Letter 
+        :-  'Ꮮ'  'ꮮ'        :: 0x13de Cherokee Capital Letter 
+        :-  'Ꮯ'  'ꮯ'        :: 0x13df Cherokee Capital Letter 
+        :-  'Ꮰ'  'ꮰ'        :: 0x13e0 Cherokee Capital Letter 
+        :-  'Ꮱ'  'ꮱ'        :: 0x13e1 Cherokee Capital Letter 
+        :-  'Ꮲ'  'ꮲ'        :: 0x13e2 Cherokee Capital Letter 
+        :-  'Ꮳ'  'ꮳ'        :: 0x13e3 Cherokee Capital Letter 
+        :-  'Ꮴ'  'ꮴ'        :: 0x13e4 Cherokee Capital Letter 
+        :-  'Ꮵ'  'ꮵ'        :: 0x13e5 Cherokee Capital Letter 
+        :-  'Ꮶ'  'ꮶ'        :: 0x13e6 Cherokee Capital Letter 
+        :-  'Ꮷ'  'ꮷ'        :: 0x13e7 Cherokee Capital Letter 
+        :-  'Ꮸ'  'ꮸ'        :: 0x13e8 Cherokee Capital Letter 
+        :-  'Ꮹ'  'ꮹ'        :: 0x13e9 Cherokee Capital Letter 
+        :-  'Ꮺ'  'ꮺ'        :: 0x13ea Cherokee Capital Letter 
+        :-  'Ꮻ'  'ꮻ'        :: 0x13eb Cherokee Capital Letter 
+        :-  'Ꮼ'  'ꮼ'        :: 0x13ec Cherokee Capital Letter 
+        :-  'Ꮽ'  'ꮽ'        :: 0x13ed Cherokee Capital Letter 
+        :-  'Ꮾ'  'ꮾ'        :: 0x13ee Cherokee Capital Letter 
+        :-  'Ꮿ'  'ꮿ'        :: 0x13ef Cherokee Capital Letter 
+        :-  'Ᏸ'  'ᏸ'        :: 0x13f0 Cherokee Capital Letter 
+        :-  'Ᏹ'  'ᏹ'        :: 0x13f1 Cherokee Capital Letter 
+        :-  'Ᏺ'  'ᏺ'        :: 0x13f2 Cherokee Capital Letter 
+        :-  'Ᏻ'  'ᏻ'        :: 0x13f3 Cherokee Capital Letter 
+        :-  'Ᏼ'  'ᏼ'        :: 0x13f4 Cherokee Capital Letter 
+        :-  'Ᏽ'  'ᏽ'        :: 0x13f5 Cherokee Capital Letter 
         :-  'Ḁ'  'ḁ'        :: 0x1e00 Latin Capital Letter A With Ring Below
         :-  'Ḃ'  'ḃ'        :: 0x1e02 Latin Capital Letter B With Dot Above
         :-  'Ḅ'  'ḅ'        :: 0x1e04 Latin Capital Letter B With Dot Below
@@ -2746,6 +2878,92 @@
         :-  'ჳ'  'Ⴣ'        :: 0x10c3 Georgian Capital Letter We
         :-  'ჴ'  'Ⴤ'        :: 0x10c4 Georgian Capital Letter Har
         :-  'ჵ'  'Ⴥ'        :: 0x10c5 Georgian Capital Letter Hoe
+        :-  'ꭰ'  'Ꭰ'        :: 0x13a0 Cherokee Capital Letter 
+        :-  'ꭱ'  'Ꭱ'        :: 0x13a1 Cherokee Capital Letter 
+        :-  'ꭲ'  'Ꭲ'        :: 0x13a2 Cherokee Capital Letter 
+        :-  'ꭳ'  'Ꭳ'        :: 0x13a3 Cherokee Capital Letter 
+        :-  'ꭴ'  'Ꭴ'        :: 0x13a4 Cherokee Capital Letter 
+        :-  'ꭵ'  'Ꭵ'        :: 0x13a5 Cherokee Capital Letter 
+        :-  'ꭶ'  'Ꭶ'        :: 0x13a6 Cherokee Capital Letter 
+        :-  'ꭷ'  'Ꭷ'        :: 0x13a7 Cherokee Capital Letter 
+        :-  'ꭸ'  'Ꭸ'        :: 0x13a8 Cherokee Capital Letter 
+        :-  'ꭹ'  'Ꭹ'        :: 0x13a9 Cherokee Capital Letter 
+        :-  'ꭺ'  'Ꭺ'        :: 0x13aa Cherokee Capital Letter 
+        :-  'ꭻ'  'Ꭻ'        :: 0x13ab Cherokee Capital Letter 
+        :-  'ꭼ'  'Ꭼ'        :: 0x13ac Cherokee Capital Letter 
+        :-  'ꭽ'  'Ꭽ'        :: 0x13ad Cherokee Capital Letter 
+        :-  'ꭾ'  'Ꭾ'        :: 0x13ae Cherokee Capital Letter 
+        :-  'ꭿ'  'Ꭿ'        :: 0x13af Cherokee Capital Letter 
+        :-  'ꮀ'  'Ꮀ'        :: 0x13b0 Cherokee Capital Letter 
+        :-  'ꮁ'  'Ꮁ'        :: 0x13b1 Cherokee Capital Letter 
+        :-  'ꮂ'  'Ꮂ'        :: 0x13b2 Cherokee Capital Letter 
+        :-  'ꮃ'  'Ꮃ'        :: 0x13b3 Cherokee Capital Letter 
+        :-  'ꮄ'  'Ꮄ'        :: 0x13b4 Cherokee Capital Letter 
+        :-  'ꮅ'  'Ꮅ'        :: 0x13b5 Cherokee Capital Letter 
+        :-  'ꮆ'  'Ꮆ'        :: 0x13b6 Cherokee Capital Letter 
+        :-  'ꮇ'  'Ꮇ'        :: 0x13b7 Cherokee Capital Letter 
+        :-  'ꮈ'  'Ꮈ'        :: 0x13b8 Cherokee Capital Letter 
+        :-  'ꮉ'  'Ꮉ'        :: 0x13b9 Cherokee Capital Letter 
+        :-  'ꮊ'  'Ꮊ'        :: 0x13ba Cherokee Capital Letter 
+        :-  'ꮋ'  'Ꮋ'        :: 0x13bb Cherokee Capital Letter 
+        :-  'ꮌ'  'Ꮌ'        :: 0x13bc Cherokee Capital Letter 
+        :-  'ꮍ'  'Ꮍ'        :: 0x13bd Cherokee Capital Letter 
+        :-  'ꮎ'  'Ꮎ'        :: 0x13be Cherokee Capital Letter 
+        :-  'ꮏ'  'Ꮏ'        :: 0x13bf Cherokee Capital Letter 
+        :-  'ꮐ'  'Ꮐ'        :: 0x13c0 Cherokee Capital Letter 
+        :-  'ꮑ'  'Ꮑ'        :: 0x13c1 Cherokee Capital Letter 
+        :-  'ꮒ'  'Ꮒ'        :: 0x13c2 Cherokee Capital Letter 
+        :-  'ꮓ'  'Ꮓ'        :: 0x13c3 Cherokee Capital Letter 
+        :-  'ꮔ'  'Ꮔ'        :: 0x13c4 Cherokee Capital Letter 
+        :-  'ꮕ'  'Ꮕ'        :: 0x13c5 Cherokee Capital Letter 
+        :-  'ꮖ'  'Ꮖ'        :: 0x13c6 Cherokee Capital Letter 
+        :-  'ꮗ'  'Ꮗ'        :: 0x13c7 Cherokee Capital Letter 
+        :-  'ꮘ'  'Ꮘ'        :: 0x13c8 Cherokee Capital Letter 
+        :-  'ꮙ'  'Ꮙ'        :: 0x13c9 Cherokee Capital Letter 
+        :-  'ꮚ'  'Ꮚ'        :: 0x13ca Cherokee Capital Letter 
+        :-  'ꮛ'  'Ꮛ'        :: 0x13cb Cherokee Capital Letter 
+        :-  'ꮜ'  'Ꮜ'        :: 0x13cc Cherokee Capital Letter 
+        :-  'ꮝ'  'Ꮝ'        :: 0x13cd Cherokee Capital Letter 
+        :-  'ꮞ'  'Ꮞ'        :: 0x13ce Cherokee Capital Letter 
+        :-  'ꮟ'  'Ꮟ'        :: 0x13cf Cherokee Capital Letter 
+        :-  'ꮠ'  'Ꮠ'        :: 0x13d0 Cherokee Capital Letter 
+        :-  'ꮡ'  'Ꮡ'        :: 0x13d1 Cherokee Capital Letter 
+        :-  'ꮢ'  'Ꮢ'        :: 0x13d2 Cherokee Capital Letter 
+        :-  'ꮣ'  'Ꮣ'        :: 0x13d3 Cherokee Capital Letter 
+        :-  'ꮤ'  'Ꮤ'        :: 0x13d4 Cherokee Capital Letter 
+        :-  'ꮥ'  'Ꮥ'        :: 0x13d5 Cherokee Capital Letter 
+        :-  'ꮦ'  'Ꮦ'        :: 0x13d6 Cherokee Capital Letter 
+        :-  'ꮧ'  'Ꮧ'        :: 0x13d7 Cherokee Capital Letter 
+        :-  'ꮨ'  'Ꮨ'        :: 0x13d8 Cherokee Capital Letter 
+        :-  'ꮩ'  'Ꮩ'        :: 0x13d9 Cherokee Capital Letter 
+        :-  'ꮪ'  'Ꮪ'        :: 0x13da Cherokee Capital Letter 
+        :-  'ꮫ'  'Ꮫ'        :: 0x13db Cherokee Capital Letter 
+        :-  'ꮬ'  'Ꮬ'        :: 0x13dc Cherokee Capital Letter 
+        :-  'ꮭ'  'Ꮭ'        :: 0x13dd Cherokee Capital Letter 
+        :-  'ꮮ'  'Ꮮ'        :: 0x13de Cherokee Capital Letter 
+        :-  'ꮯ'  'Ꮯ'        :: 0x13df Cherokee Capital Letter 
+        :-  'ꮰ'  'Ꮰ'        :: 0x13e0 Cherokee Capital Letter 
+        :-  'ꮱ'  'Ꮱ'        :: 0x13e1 Cherokee Capital Letter 
+        :-  'ꮲ'  'Ꮲ'        :: 0x13e2 Cherokee Capital Letter 
+        :-  'ꮳ'  'Ꮳ'        :: 0x13e3 Cherokee Capital Letter 
+        :-  'ꮴ'  'Ꮴ'        :: 0x13e4 Cherokee Capital Letter 
+        :-  'ꮵ'  'Ꮵ'        :: 0x13e5 Cherokee Capital Letter 
+        :-  'ꮶ'  'Ꮶ'        :: 0x13e6 Cherokee Capital Letter 
+        :-  'ꮷ'  'Ꮷ'        :: 0x13e7 Cherokee Capital Letter 
+        :-  'ꮸ'  'Ꮸ'        :: 0x13e8 Cherokee Capital Letter 
+        :-  'ꮹ'  'Ꮹ'        :: 0x13e9 Cherokee Capital Letter 
+        :-  'ꮺ'  'Ꮺ'        :: 0x13ea Cherokee Capital Letter 
+        :-  'ꮻ'  'Ꮻ'        :: 0x13eb Cherokee Capital Letter 
+        :-  'ꮼ'  'Ꮼ'        :: 0x13ec Cherokee Capital Letter 
+        :-  'ꮽ'  'Ꮽ'        :: 0x13ed Cherokee Capital Letter 
+        :-  'ꮾ'  'Ꮾ'        :: 0x13ee Cherokee Capital Letter 
+        :-  'ꮿ'  'Ꮿ'        :: 0x13ef Cherokee Capital Letter 
+        :-  'ᏸ'  'Ᏸ'        :: 0x13f0 Cherokee Capital Letter 
+        :-  'ᏹ'  'Ᏹ'        :: 0x13f1 Cherokee Capital Letter 
+        :-  'ᏺ'  'Ᏺ'        :: 0x13f2 Cherokee Capital Letter 
+        :-  'ᏻ'  'Ᏻ'        :: 0x13f3 Cherokee Capital Letter 
+        :-  'ᏼ'  'Ᏼ'        :: 0x13f4 Cherokee Capital Letter 
+        :-  'ᏽ'  'Ᏽ'        :: 0x13f5 Cherokee Capital Letter 
         :-  'ḁ'  'Ḁ'        :: 0x1e00 Latin Capital Letter A With Ring Below
         :-  'ḃ'  'Ḃ'        :: 0x1e02 Latin Capital Letter B With Dot Above
         :-  'ḅ'  'Ḅ'        :: 0x1e04 Latin Capital Letter B With Dot Below
