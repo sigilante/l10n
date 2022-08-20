@@ -81,15 +81,16 @@
 +$  locale    $:(language script region)
 ::
 +$  label     @tas
-+$  griffe    (map label tape)
++$  griffe    (map label @t)
 ::
 ++  le
   |_  [default-locale=locale mots=(map locale griffe)]
   ::  Parse locale string into locale tuple.
   ::
   ++  parse-locale
-    |=  str=tape
+    |=  str=@t
     ^-  locale
+    =/  str  (trip str)
     =/  n  (lent str)
     =/  str  (cass str)
     ?:  |(=(n 2) =(n 3))
@@ -107,6 +108,19 @@
           ~|  'Failed to parse region from locale string.'
         p.u.+.q:((cook |=(a=tape =/(a (crip (flop a)) ?>(?=(region a) a))) (star (shim 'a' 'z'))) [[1 1] (flop str)])
       `locale`[`language`lang `script`%$ `region`regn]
+    ?:  |(=(n 7) =(n 8))
+      :: language and script (uncommon)
+      =/  lang-hold
+          ~|  'Failed to parse language from locale string.'
+        ((cook |=(a=tape =/(a (crip a) ?>(?=(language a) a))) (star (shim 'a' 'z'))) [[1 1] str])
+      =/  lang  p.u.+.q:lang-hold
+      =/  writ-str
+          ~|  'Failed to parse script from locale string.'
+        q.q.u.+.q:lang-hold
+      =/  writ
+          ~|  'Failed to parse script from locale string.'
+        p.+<.q:((cook |=(a=tape =/(a (crip a) ?>(?=(script a) a))) (star (shim 'a' 'z'))) [[1 1] +.writ-str])
+      `locale`[`language`lang `script`writ `region`%$]
     ?:  |(=(n 10) =(n 11))
       :: language, script, and region (uncommon)
       =/  lang-hold
@@ -128,41 +142,41 @@
   ::  Put by string (e.g. 'en_GB').
   ::
   ++  puts
-    |=  [lieu=tape =label =tape]
+    |=  [lieu=@t =label =@t]
     ^-  [locale (map locale griffe)]
     =/  locale  `locale`(parse-locale lieu)
-    (put locale label tape)
+    (put locale label t)
   ::  Put by locale (e.g. [%en %$ %gb]).
   ::
   ++  put
-    |=  [=locale =label =tape]
+    |=  [=locale =label =@t]
     ^-  [^locale (map ^locale griffe)]
     =/  source  ^-  griffe
         ?:  (~(has by mots) locale)
         (~(got by mots) locale)
       *griffe
     :-  default-locale
-        (~(put by mots) locale `griffe`(~(put by source) label tape))
+        (~(put by mots) locale `griffe`(~(put by source) label t))
   ::  Put by default locale.
   ::
   ++  putd
-    |=  [=locale =label =tape]
+    |=  [=locale =label =@t]
     ^-  [^locale (map ^locale griffe)]
-    (put default-locale label tape)
+    (put default-locale label t)
   ::  Get by string (e.g. 'en_GB').  Fallback handled in ++get.
   ::
   ++  gets
-    |=  [=tape =label]
-    ^-  (unit ^tape)
+    |=  [=@t =label]
+    ^-  (unit @t)
     ::  Retrieve locale from string.
-    =/  locale  `locale`(parse-locale tape)
+    =/  locale  `locale`(parse-locale t)
     (get locale label)
   ::  Get by locale (e.g. [%en %$ %gb]).  Fall back by removing script, then
   ::  region.
   ::
   ++  get
     |=  [=locale =label]
-    ^-  (unit tape)
+    ^-  (unit @t)
     =/  language   -.locale
     =/  script    +<.locale
     =/  region    +>.locale
@@ -178,19 +192,19 @@
     *griffe
     ?:  (~(has by source) label)
       (~(get by source) label)
-    `(unit tape)`~
+    `(unit @t)`~
   ::  Get by default locale.
   ::
   ++  getd
     |=  [=label]
-    ^-  (unit tape)
+    ^-  (unit @t)
     (get default-locale label)
   ::  Has by string (e.g. 'en_GB').  Fallback handled in ++has.
   ::
   ++  hass
-    |=  [=tape =label]
+    |=  [=@t =label]
     ^-  ?(%.y %.n)
-    (has (parse-locale tape) label)
+    (has (parse-locale t) label)
   ::  Has by locale (e.g. [%en %$ %gb]).  No fallback.
   ::
   ++  has
@@ -224,10 +238,10 @@
     ~
   ::  Delete by string
   ++  dels
-    |=  [=tape =label]
+    |=  [=@t =label]
     ^-  (map locale griffe)
     ::  Retrieve locale from string.
-    (del (parse-locale tape) label)
+    (del (parse-locale t) label)
   ::  Delete by locale
   ++  del
     |=  [=locale =label]
@@ -1669,44 +1683,15 @@
     |-  ^-  tape
     ?~  beef  ster
     =/  char  `@ux``@`(snag 0 `calf`beef)
-    ::  1-byte ASCII?
-    ~|  'Error processing UTF-8 multi-byte character into bytes.'
-    ?:  (lth char 0x7f)
-      =/  count  1
-      =/  first   `@t`char
-      %=  $
-        beef   `calf`(slag count `calf`beef)
-        ster   (weld ~[first] ster)
-      ==
-    ::  2-byte?
-    ?:  &((lte 0xc0 char) (gte 0xdf char))
-      =/  count  2
-      =+  [first second]=[&1 &2]:(rip [3 1] char)
-      %=  $
-        beef   `calf`(slag count `calf`beef)
-        ster   (weld ~[second first] ster)
-      ==
-    ::  3-byte?
-    ?:  &((lte 0xe0 char) (gte 0xef char))
-      =/  count  2
-      =+  [first second third]=[&1 &2 &3]:(rip [3 1] char)
-      %=  $
-        beef   `calf`(slag count `calf`beef)
-        ster   (weld ~[third second first] ster)
-      ==
-    ::  4-byte?
-    ?:  &((lte 0xf0 char) (gte 0xf7 char))
-      =/  count  2
-      =+  [first second third fourth]=[&1 &2 &3 &4]:(rip [3 1] char)
-      %=  $
-        beef   `calf`(slag count `calf`beef)
-        ster   (weld ~[fourth third second first] ster)
-      ==
-    !!
+    =/  chars  `(list @t)`(rip [3 1] char)
+    %=  $
+      beef   `calf`(tail `calf`beef)
+      ster   (weld (flop chars) ster)
+    ==
   ++  cass
     |=  vib=tape
-    ^-  calf
-    (turn (lasso vib) |=(c=@t ?:((~(has by cass-map) c) (~(got by cass-map) c) c)))
+    ^-  tape
+    (brand (turn (lasso vib) |=(c=@t ?:((~(has by cass-map) c) (~(got by cass-map) c) c))))
   ++  cass-map
     ^-  (map @t @t)
     %-  malt
@@ -1934,6 +1919,50 @@
         :-  'Ω'  'ω'        :: 0x3a9 Greek Capital Letter Omega
         :-  'Ϊ'  'ϊ'        :: 0x3aa Greek Capital Letter Iota With Dialytika
         :-  'Ϋ'  'ϋ'        :: 0x3ab Greek Capital Letter Upsilon With Dialytika
+        :-  'Ά'  'ά'        :: 0x3ac Greek Capital Letter Alpha With Tonos
+        :-  'Έ'  'έ'        :: 0x3ad Greek Capital Letter Epsilon With Tonos
+        :-  'Ή'  'ή'        :: 0x3ae Greek Capital Letter Eta With Tonos
+        :-  'Ί'  'ί'        :: 0x3af Greek Capital Letter Iota With Tonos
+        :-  'Ϋ́'  'ΰ'        :: 0x3b0 Greek Capital Letter Upsilon With Dialytika And Tonos
+        :-  'Α'  'α'        :: 0x3b1 Greek Capital Letter Alpha
+        :-  'Β'  'β'        :: 0x3b2 Greek Capital Letter Beta
+        :-  'Γ'  'γ'        :: 0x3b3 Greek Capital Letter Gamma
+        :-  'Δ'  'δ'        :: 0x3b4 Greek Capital Letter Delta
+        :-  'Ε'  'ε'        :: 0x3b5 Greek Capital Letter Epsilon
+        :-  'Ζ'  'ζ'        :: 0x3b6 Greek Capital Letter Zeta
+        :-  'Η'  'η'        :: 0x3b7 Greek Capital Letter Eta
+        :-  'Θ'  'θ'        :: 0x3b8 Greek Capital Letter Theta
+        :-  'Ι'  'ι'        :: 0x3b9 Greek Capital Letter Iota
+        :-  'Κ'  'κ'        :: 0x3ba Greek Capital Letter Kappa
+        :-  'Λ'  'λ'        :: 0x3bb Greek Capital Letter Lamda
+        :-  'Μ'  'μ'        :: 0x3bc Greek Capital Letter Mu
+        :-  'Ν'  'ν'        :: 0x3bd Greek Capital Letter Nu
+        :-  'Ξ'  'ξ'        :: 0x3be Greek Capital Letter Xi
+        :-  'Ο'  'ο'        :: 0x3bf Greek Capital Letter Omicron
+        :-  'Π'  'π'        :: 0x3c0 Greek Capital Letter Pi
+        :-  'Ρ'  'ρ'        :: 0x3c1 Greek Capital Letter Rho
+        :-  'Σ'  'σ'        :: 0x3c3 Greek Capital Letter Sigma
+        :-  'Τ'  'τ'        :: 0x3c4 Greek Capital Letter Tau
+        :-  'Υ'  'υ'        :: 0x3c5 Greek Capital Letter Upsilon
+        :-  'Φ'  'φ'        :: 0x3c6 Greek Capital Letter Phi
+        :-  'Χ'  'χ'        :: 0x3c7 Greek Capital Letter Chi
+        :-  'Ψ'  'ψ'        :: 0x3c8 Greek Capital Letter Psi
+        :-  'Ω'  'ω'        :: 0x3c9 Greek Capital Letter Omega
+        :-  'Ϊ'  'ϊ'        :: 0x3ca Greek Capital Letter Iota With Dialytika
+        :-  'Ϋ'  'ϋ'        :: 0x3cb Greek Capital Letter Upsilon With Dialytika
+        :-  'Ό'  'ό'        :: 0x3cc Greek Capital Letter Omicron With Tonos
+        :-  'Ύ'  'ύ'        :: 0x3cd Greek Capital Letter Upsilon With Tonos
+        :-  'Ώ'  'ώ'        :: 0x3ce Greek Capital Letter Omega With Tonos
+        :-  'Ϗ'  'ϗ'        :: 0x3cf Capital Kai Symbol
+        :-  'ϒ'  'ϒ'        :: 0x3d2 Upsilon With Hook Symbol
+        :-  'ϓ'  'ϓ'        :: 0x3d3 Upsilon With Acute And Hook Symbol
+        :-  'ϔ'  'ϔ'        :: 0x3d4 Upsilon With Diaeresis And Hook Symbol
+        :-  'Ϗ'  'ϗ'        :: 0x3d7 Kai Symbol
+        :-  'Ϙ'  'ϙ'        :: 0x3d8 Letter Archaic Koppa
+        :-  'Ϛ'  'ϛ'        :: 0x3da Letter Stigma
+        :-  'Ϝ'  'ϝ'        :: 0x3dc Letter Digamma
+        :-  'Ϟ'  'ϟ'        :: 0x3de Letter Koppa
+        :-  'Ϡ'  'ϡ'        :: 0x3e0 Letter Sampi
         :-  'Ϣ'  'ϣ'        :: 0x3e2 Coptic Capital Letter Shei
         :-  'Ϥ'  'ϥ'        :: 0x3e4 Coptic Capital Letter Fei
         :-  'Ϧ'  'ϧ'        :: 0x3e6 Coptic Capital Letter Khei
@@ -2383,6 +2412,7 @@
         :-  'Ὧ'  'ὧ'        :: 0x1f6f Greek Capital Letter Omega With Dasia And Perispomeni
         :-  'Ᾰ'  'ᾰ'        :: 0x1fb8 Greek Capital Letter Alpha With Vrachy
         :-  'Ᾱ'  'ᾱ'        :: 0x1fb9 Greek Capital Letter Alpha With Macron
+        :-  'Ὰ'  'ὰ'        :: 0x1fba Greek Capital Letter Alpha With Varia
         :-  'Ῐ'  'ῐ'        :: 0x1fd8 Greek Capital Letter Iota With Vrachy
         :-  'Ῑ'  'ῑ'        :: 0x1fd9 Greek Capital Letter Iota With Macron
         :-  'Ῠ'  'ῠ'        :: 0x1fe8 Greek Capital Letter Upsilon With Vrachy
@@ -2456,8 +2486,8 @@
   ==
   ++  cuss
     |=  vib=tape
-    ^-  calf
-    (turn (lasso vib) |=(c=@t ?:((~(has by cuss-map) c) (~(got by cuss-map) c) c)))
+    ^-  tape
+    (brand (turn (lasso vib) |=(c=@t ?:((~(has by cuss-map) c) (~(got by cuss-map) c) c))))
   ++  cuss-map
     ^-  (map @t @t)
     %-  malt
@@ -2685,6 +2715,55 @@
         :-  'ω'  'Ω'        :: 0x3a9 Greek Capital Letter Omega
         :-  'ϊ'  'Ϊ'        :: 0x3aa Greek Capital Letter Iota With Dialytika
         :-  'ϋ'  'Ϋ'        :: 0x3ab Greek Capital Letter Upsilon With Dialytika
+        :-  'ά'  'Ά'        :: 0x3ac Greek Capital Letter Alpha With Tonos
+        :-  'έ'  'Έ'        :: 0x3ad Greek Capital Letter Epsilon With Tonos
+        :-  'ή'  'Ή'        :: 0x3ae Greek Capital Letter Eta With Tonos
+        :-  'ί'  'Ί'        :: 0x3af Greek Capital Letter Iota With Tonos
+        :-  'ΰ'  'Ϋ́'        :: 0x3b0 Greek Capital Letter Upsilon With Dialytika And Tonos
+        :-  'α'  'Α'        :: 0x3b1 Greek Capital Letter Alpha
+        :-  'β'  'Β'        :: 0x3b2 Greek Capital Letter Beta
+        :-  'γ'  'Γ'        :: 0x3b3 Greek Capital Letter Gamma
+        :-  'δ'  'Δ'        :: 0x3b4 Greek Capital Letter Delta
+        :-  'ε'  'Ε'        :: 0x3b5 Greek Capital Letter Epsilon
+        :-  'ζ'  'Ζ'        :: 0x3b6 Greek Capital Letter Zeta
+        :-  'η'  'Η'        :: 0x3b7 Greek Capital Letter Eta
+        :-  'θ'  'Θ'        :: 0x3b8 Greek Capital Letter Theta
+        :-  'ι'  'Ι'        :: 0x3b9 Greek Capital Letter Iota
+        :-  'κ'  'Κ'        :: 0x3ba Greek Capital Letter Kappa
+        :-  'λ'  'Λ'        :: 0x3bb Greek Capital Letter Lamda
+        :-  'μ'  'Μ'        :: 0x3bc Greek Capital Letter Mu
+        :-  'ν'  'Ν'        :: 0x3bd Greek Capital Letter Nu
+        :-  'ξ'  'Ξ'        :: 0x3be Greek Capital Letter Xi
+        :-  'ο'  'Ο'        :: 0x3bf Greek Capital Letter Omicron
+        :-  'π'  'Π'        :: 0x3c0 Greek Capital Letter Pi
+        :-  'ρ'  'Ρ'        :: 0x3c1 Greek Capital Letter Rho
+        :-  'ς'  'Σ'        :: 0x3c2 Greek Capital Letter Final Sigma
+        :-  'σ'  'Σ'        :: 0x3c3 Greek Capital Letter Sigma
+        :-  'τ'  'Τ'        :: 0x3c4 Greek Capital Letter Tau
+        :-  'υ'  'Υ'        :: 0x3c5 Greek Capital Letter Upsilon
+        :-  'φ'  'Φ'        :: 0x3c6 Greek Capital Letter Phi
+        :-  'χ'  'Χ'        :: 0x3c7 Greek Capital Letter Chi
+        :-  'ψ'  'Ψ'        :: 0x3c8 Greek Capital Letter Psi
+        :-  'ω'  'Ω'        :: 0x3c9 Greek Capital Letter Omega
+        :-  'ϊ'  'Ϊ'        :: 0x3ca Greek Capital Letter Iota With Dialytika
+        :-  'ϋ'  'Ϋ'        :: 0x3cb Greek Capital Letter Upsilon With Dialytika
+        :-  'ό'  'Ό'        :: 0x3cc Greek Capital Letter Omicron With Tonos
+        :-  'ύ'  'Ύ'        :: 0x3cd Greek Capital Letter Upsilon With Tonos
+        :-  'ώ'  'Ώ'        :: 0x3ce Greek Capital Letter Omega With Tonos
+        :-  'ϗ'  'Ϗ'        :: 0x3cf Capital Kai Symbol
+        :-  'ϐ'  'Β'        :: 0x3d0 Beta Symbol
+        :-  'ϑ'  'Θ'        :: 0x3d1 Theta Symbol
+        :-  'ϒ'  'ϒ'        :: 0x3d2 Upsilon With Hook Symbol
+        :-  'ϓ'  'ϓ'        :: 0x3d3 Upsilon With Acute And Hook Symbol
+        :-  'ϔ'  'ϔ'        :: 0x3d4 Upsilon With Diaeresis And Hook Symbol
+        :-  'ϕ'  'Φ'        :: 0x3d5 Phi Symbol
+        :-  'ϖ'  'Π'        :: 0x3d6 Pi Symbol
+        :-  'ϗ'  'Ϗ'        :: 0x3d7 Kai Symbol
+        :-  'ϙ'  'Ϙ'        :: 0x3d9 Greek Capital Letter Archaic Koppa
+        :-  'ϛ'  'Ϛ'        :: 0x3db Greek Capital Letter Stigma
+        :-  'ϝ'  'Ϝ'        :: 0x3dd Greek Capital Letter Digamma
+        :-  'ϟ'  'Ϟ'        :: 0x3df Greek Capital Letter Koppa
+        :-  'ϡ'  'Ϡ'        :: 0x3e1 Greek Capital Letter Sampi
         :-  'ϣ'  'Ϣ'        :: 0x3e2 Coptic Capital Letter Shei
         :-  'ϥ'  'Ϥ'        :: 0x3e4 Coptic Capital Letter Fei
         :-  'ϧ'  'Ϧ'        :: 0x3e6 Coptic Capital Letter Khei
@@ -3099,6 +3178,7 @@
         :-  'ἔ'  'Ἔ'        :: 0x1f1c Greek Capital Letter Epsilon With Psili And Oxia
         :-  'ἕ'  'Ἕ'        :: 0x1f1d Greek Capital Letter Epsilon With Dasia And Oxia
         :-  'ἠ'  'Ἠ'        :: 0x1f28 Greek Capital Letter Eta With Psili
+        :-  'ῆ'  'Ἠ'        :: 0x1f20 Greek Capital Letter Eta with Psili
         :-  'ἡ'  'Ἡ'        :: 0x1f29 Greek Capital Letter Eta With Dasia
         :-  'ἢ'  'Ἢ'        :: 0x1f2a Greek Capital Letter Eta With Psili And Varia
         :-  'ἣ'  'Ἣ'        :: 0x1f2b Greek Capital Letter Eta With Dasia And Varia
@@ -3134,6 +3214,7 @@
         :-  'ὧ'  'Ὧ'        :: 0x1f6f Greek Capital Letter Omega With Dasia And Perispomeni
         :-  'ᾰ'  'Ᾰ'        :: 0x1fb8 Greek Capital Letter Alpha With Vrachy
         :-  'ᾱ'  'Ᾱ'        :: 0x1fb9 Greek Capital Letter Alpha With Macron
+        :-  'ὰ'  'Ὰ'        :: 0x1fba Greek Capital Letter Alpha With Varia
         :-  'ῐ'  'Ῐ'        :: 0x1fd8 Greek Capital Letter Iota With Vrachy
         :-  'ῑ'  'Ῑ'        :: 0x1fd9 Greek Capital Letter Iota With Macron
         :-  'ῠ'  'Ῠ'        :: 0x1fe8 Greek Capital Letter Upsilon With Vrachy
