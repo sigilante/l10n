@@ -50,21 +50,105 @@
     !>  (malt `(list (pair @tas @t))`~[[%autonym 'English']])
     !>  (~(put by *griffe) %autonym 'English')
   ==
-++  test-phrases
-  =/  words  (~(put le [%en %$ %$] *(map locale griffe)) `locale`[%en %latn %gb] %phrase 'I saw something nasty in the woodshed.')
+++  test-le
+  =/  empty
+    ::  Default locale
+    :-  `locale`[%en %$ %$]
+    ^-  (map locale griffe)
+    ::  String table
+    %-  malt
+    ^-  (list (pair locale griffe))
+    ~
+  =/  reference
+    ::  Default locale
+    :-  `locale`[%en %latn %gb]
+    ^-  (map locale griffe)
+    ::  String table
+    %-  malt
+    ^-  (list (pair locale griffe))
+    :~
+    ::  English
+    :-  `locale`[%en %latn %gb]
+    %-  griffe
+    %-  malt
+    ^-  (list (pair label @t))
+    :~  [%phrase 'I saw something nasty in the woodshed.']  ==
+    ::  French
+    :-  `locale`[%fr %latn %fr]
+    %-  griffe
+    %-  malt
+    ^-  (list (pair label @t))
+    :~  [%phrase 'J\'ai vu quelque chose de méchant dans le bûcher.']  ==
+    ::  German
+    :-  `locale`[%de %latn %de]
+    %-  griffe
+    %-  malt
+    ^-  (list (pair label @t))
+    :~  [%phrase 'Ich habe etwas Ekelhaftes im Holzschuppen gesehen.']  ==
+    ::  English, Deseret
+    :-  `locale`[%en %dsrt %us]
+    %-  griffe
+    %-  malt
+    ^-  (list (pair label @t))
+    :~  [%phrase '𐐌 𐑅𐐫 𐑅𐐲𐑋𐑃𐐮𐑍 𐑌𐐰𐑅𐐻𐐨 𐐮𐑌 𐑄 𐐶𐐳𐐼𐑇𐐯𐐼.']  ==
+    ::  Japanese
+    :-  `locale`[%ja %jpan %jp]
+    %-  griffe
+    %-  malt
+    ^-  (list (pair label @t))
+    :~  [%phrase '森の小屋で何か厄介なものを見ました。']  ==
+    ==
+  =/  words  (~(put le [%en %latn %gb] *(map locale griffe)) `locale`[%en %latn %gb] %phrase 'I saw something nasty in the woodshed.')
   =/  words  (~(put le words) `locale`[%fr %latn %fr] %phrase 'J\'ai vu quelque chose de méchant dans le bûcher.')
   =/  words  (~(put le words) `locale`[%de %latn %de] %phrase 'Ich habe etwas Ekelhaftes im Holzschuppen gesehen.')
   =/  words  (~(put le words) `locale`[%en %dsrt %us] %phrase '𐐌 𐑅𐐫 𐑅𐐲𐑋𐑃𐐮𐑍 𐑌𐐰𐑅𐐻𐐨 𐐮𐑌 𐑄 𐐶𐐳𐐼𐑇𐐯𐐼.')
-  =/  words  (~(put le words) `locale`[%ja %jpan %jp] %phrase '森の小屋で何か厄介なものを見ました。.')
+  =/  words  (~(put le words) `locale`[%ja %jpan %jp] %phrase '森の小屋で何か厄介なものを見ました。')
+  =/  hail-britannia  (~(put le [%en %$ %$] *(map locale griffe)) `locale`[%en %$ %$] %phrase 'I saw something nasty in the woodshed.')
   ;:  weld
   %+  expect-eq
-    !>  :-  [%en %$ %$]
-        %-  malt
-        ^-  (list (pair @tas @t))
-        :~  [%autonym 'English']  ==
+    !>  reference
     !>  words
+  %+  expect-eq
+    !>  [-.empty (~(put by +.empty) `locale`[%en %$ %$] (~(put by *griffe) %phrase 'I saw something nasty in the woodshed.'))]
+    !>  (~(puts le [%en %$ %$] *(map locale griffe)) 'en' %phrase 'I saw something nasty in the woodshed.')
+  %+  expect-eq
+    !>  [-.empty (~(put by +.empty) `locale`[%en %$ %$] (~(put by *griffe) %phrase 'I saw something nasty in the woodshed.'))]
+    !>  (~(put le [%en %$ %$] *(map locale griffe)) [%en %$ %$] %phrase 'I saw something nasty in the woodshed.')
+  %+  expect-eq
+    !>  [-.empty (~(put by +.empty) `locale`[%en %$ %$] (~(put by *griffe) %phrase 'I saw something nasty in the woodshed.'))]
+    !>  (~(putd le [%en %$ %$] *(map locale griffe)) %phrase 'I saw something nasty in the woodshed.')
+  %+  expect-eq
+    !>  `'Ich habe etwas Ekelhaftes im Holzschuppen gesehen.'
+    !>  (~(gets le words) 'de-Latn-DE' %phrase)
+  %+  expect-eq
+    !>  `'Ich habe etwas Ekelhaftes im Holzschuppen gesehen.'
+    !>  (~(get le words) `locale`[%de %latn %de] %phrase)
+  %+  expect-eq
+    !>  `'I saw something nasty in the woodshed.'
+    !>  (~(getd le words) %phrase)
+  %+  expect-eq
+    !>  `'I saw something nasty in the woodshed.'
+    !>  (~(gett le hail-britannia) `locale`[%en %latn %us] %phrase)
+  %+  expect-eq
+    !>  %.y
+    !>  (~(hass le words) 'ja-Jpan-JP' %phrase)
+  %+  expect-eq
+    !>  %.y
+    !>  (~(has le words) `locale`[%ja %jpan %jp] %phrase)
+  %+  expect-eq
+    !>  %.y
+    !>  (~(hasd le words) %phrase)
+  %+  expect-eq
+    !>  ``locale`[%en %$ %$]
+    !>  (~(hast le hail-britannia) `locale`[%en %$ %gb] %phrase)
+  %+  expect-eq
+    !>  empty
+    !>  (~(dels le hail-britannia) 'en' %phrase)
+  %+  expect-eq
+    !>  empty
+    !>  (~(del le hail-britannia) `locale`[%en %$ %$] %phrase)
   ==
-++  test-cases
+++  test-ul-cases
   ::  First line of a Mormon hymn, in Deseret alphabet
   =/  p-0  "𐐆𐑁 𐐷𐐭 𐐿𐐳𐐼 𐐸𐐴 𐐻𐐭 𐐗𐐬𐑊𐐪𐐺"
   =/  l-0  "𐐮𐑁 𐐷𐐭 𐐿𐐳𐐼 𐐸𐐴 𐐻𐐭 𐐿𐐬𐑊𐐪𐐺"
@@ -121,6 +205,4 @@
     !>  u-2
     !>  (cuss:ul l-2)
   ==
-
-
 --

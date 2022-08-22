@@ -61,8 +61,7 @@
 ::  Each client app will create its own instance:
 ::
 ::    /+  *l10n
-::    /*  locale-data  %hoon  /app/my-app/string-table/hoon
-::    =/  words  (parse-strings:le locale-data)
+::    /*  words  %hoon  /app/my-app/string-table/hoon
 ::    (~(get le words) [%en %$ %$] %autonym)
 ::    (~(getd le words) %autonym)
 ::    (~(gets le words) 'en-Dsrt-US' %autonym)
@@ -160,8 +159,8 @@
   ::  Put by default locale.
   ::
   ++  putd
-    |=  [=locale =label =@t]
-    ^-  [^locale (map ^locale griffe)]
+    |=  [=label =@t]
+    ^-  [locale (map locale griffe)]
     (put default-locale label t)
   ::  Get by string (e.g. 'en_GB').  Fallback handled in ++get.
   ::
@@ -199,6 +198,22 @@
     |=  [=label]
     ^-  (unit @t)
     (get default-locale label)
+  ::  Get by tree (e.g. [%en %$ %gb]).  Fall back by removing script, then
+  ::  region.
+  ::
+  ++  gett
+    |=  [=locale =label]
+    ^-  (unit @t)
+    =/  language   -.locale
+    =/  script    +<.locale
+    =/  region    +>.locale
+    ?:  (has [language script region] label)
+      (get [language script region] label)
+    ?:  (has [language %$ region] label)
+      (get [language %$ region] label)
+    ?:  (has [language %$ %$] label)
+      (get [language %$ region] label)
+    ~
   ::  Has by string (e.g. 'en_GB').  Fallback handled in ++has.
   ::
   ++  hass
@@ -239,18 +254,20 @@
   ::  Delete by string
   ++  dels
     |=  [=@t =label]
-    ^-  (map locale griffe)
+    ^-  [locale (map locale griffe)]
     ::  Retrieve locale from string.
     (del (parse-locale t) label)
   ::  Delete by locale
   ++  del
     |=  [=locale =label]
-    ^-  (map ^locale griffe)
+    ^-  [^locale (map ^locale griffe)]
     ~|  'Failed to locate key for deletion.'
     ?.  (~(has by mots) locale)  !!
     =/  source  (~(got by mots) locale)
-    =/  modify  (~(del by source) label)
-    (~(put by mots) locale modify)
+    =/  result  (~(del by source) label)
+    ?:  =(result *griffe)
+      [default-locale (~(del by mots) locale)]
+    [default-locale (~(put by mots) locale result)]
   --
 ::  LANGUAGE CODES :: ISO-639
 ::
